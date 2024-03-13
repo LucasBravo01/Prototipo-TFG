@@ -3,7 +3,7 @@
 module.exports = {
     mysqlConfig: {
         host: "localhost",
-        user: "root",
+        user: "usuario_pwa",
         password: "",
         database: "prueba_pwa", //UCM_RIU
         port: 3306

@@ -3,15 +3,15 @@ let swLocation = "sw.js";
 // "/beerjs/sw.js";
 
 if (navigator.serviceWorker) {
-  if (window.location.href.includes("localhost")) swLocation = "/sw.js"; //Varia según el host
+  if (window.location.href.includes("localhost")) swLocation = "../sw.js"; //Varia según el host
   navigator.serviceWorker.register(swLocation);
 }
 ///////////////////////
-const publicVapidKey = 'BFuHeOQw6wWoHE2dMKnxMuVC1m_eO2B3obOKy7p6vWY1_z1pf8EpT1YC1NzJ50DIDFEvUJJx4UeI3DoIoPg9UY4';
+const publicVapidKey = 'BLCnzXg8xUoWfMEHgv6LvbweKvD8gPFnhDFa_itdDK-k7UvZhthfW9KyIRopraMi5mhaXqEMXitX22g-4kJNs7g';
 
 async function subscribeToNotifications() {
   try {
-    const serviceWorkerRegistration = await navigator.serviceWorker.register('/sw.js');
+    const serviceWorkerRegistration = await navigator.serviceWorker.register('../sw.js');
     const subscription = await serviceWorkerRegistration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: publicVapidKey

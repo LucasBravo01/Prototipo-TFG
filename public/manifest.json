@@ -1,6 +1,6 @@
 {
-    "short_name": "TareaApp",
-    "name": "TareaApp PWA",
+    "short_name": "TareApp",
+    "name": "TareApp PWA",
     "icons": [
         {
             "src": "images/icon-64x64.png",
@@ -28,7 +28,7 @@
             "type": "image/png"
         }
     ],
-    "start_url": "index.html",
+    "start_url": "vistaView",
     "background_color": "#758BFD",
     "display": "standalone",
     "scope": "/",

@@ -1,11 +1,11 @@
 "use strict";
 
 module.exports = {
-    mysqlConfig: {
+    mysqlConfig: { // Conexión BBDD
         host: "localhost",
         user: "root",
         password: "",
-        database: "prueba_pwa", //UCM_RIU
+        database: "Prototipo_TareApp",
         port: 3306
     },
     

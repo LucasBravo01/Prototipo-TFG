@@ -1,180 +1,206 @@
 "use strict";
 
-const config = require("./config");
-const DAOTareas = require("./DAOTareas"); //Dao para gestionas los usuarios
-//////////////////////////////////
-const cron = require('node-cron');
+// --- Importar módulos ---
+// Core
+const path = require("path");
 
-const webpush = require('web-push'); // Importar web-push
-// Configuración de web-push (debes configurar tus propias claves)
-// Configura tus propias claves VAPID
-const vapidKeys = webpush.generateVAPIDKeys();
-console.log("Clave pública VAPID:", vapidKeys.publicKey);
-console.log("Clave privada VAPID:", vapidKeys.privateKey);
-const publicVapidKey = 'BFuHeOQw6wWoHE2dMKnxMuVC1m_eO2B3obOKy7p6vWY1_z1pf8EpT1YC1NzJ50DIDFEvUJJx4UeI3DoIoPg9UY4';
-const privateVapidKey = 'QgMluwWgUpYLH-ffX-0yQxiIq7s6PDu9HE96z3hl3fc';
-webpush.setVapidDetails('mailto:your_email@example.com', publicVapidKey, privateVapidKey);
-///////////////////////////
-const path = require("path"); 
-const mysql = require("mysql"); //Usar Mysql
-const express = require("express");//Usar express
-const morgan = require("morgan"); //Para poder ver las funciones de app.js que se estan haciendo
+// Paquete
+const express = require("express");
+const mysql = require("mysql");
 const session = require("express-session");
 const sessionMySql = require("express-mysql-session");
-// Crear el servidor 
+const morgan = require("morgan");
+const cron = require('node-cron');
+
+// Fichero
+const connection = require("./daos/connection");
+const DAOTareas = require("./daos/DAOTareas");
+const DAOSuscripción = require("./daos/DAOSuscripción");
+const ControllerPrototipo = require("./controllers/controllerPrototipo");
+const routerPrototipo = require("./routes/RouterPrototipo");
+
+// --- Crear aplicación Express ---
 const app = express();
-//////////////////////////////////////
-const bodyParser = require("body-parser");
-// Configurar body-parser para analizar datos de formularios
-app.use(bodyParser.urlencoded({ extended: true }));
-// Configurar body-parser para analizar datos JSON
-app.use(bodyParser.json());
-/////////////////////////////////////////
- 
-const MySQLStore = sessionMySql(session);  
-const sessionStore  = new MySQLStore(config.mysqlConfig); 
-//Crear la session
+
+// --- EJS ---
+app.set("view engine", "ejs"); // Configurar EJS como motor de plantillas
+app.set("views", path.join(__dirname, "views")); // Definir el directorio de plantillas
+
+// --- BodyParser (Express) ---
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());//Para poder usar ajax y que se pasen los datos en formato json
+
+// --- Static ---
+app.use(express.static(path.join(__dirname, "public"))); // Gestionar ficheros estáticos con static
+
+// --- Morgan ---
+app.use(morgan("dev")); // Imprimir peticiones recibidas
+
+// --- Sesiones y MySQL ---
+// Sesión MySQL
+const MySQLStore = sessionMySql(session);
+const sessionStore = new MySQLStore(connection.mysqlConfig);
+
+// Crear middleware de la sesión
 const middlewareSession = session({
   saveUninitialized: false,
-  secret:"sesion01",
+  secret: "sesion01",
   resave: false,
   store: sessionStore
-}); 
-
+});
 app.use(middlewareSession);
+
+
 app.use((req, res, next) => {
   res.locals.session = req.session;
   next();
-}); 
-
-app.set('views', path.join(__dirname, 'views')); //Meter los ejs en el fichero viewa
-app.set('view engine', 'ejs');
-const ficherosEstaticos = path.join(__dirname, "public");  //Meter los ficheros estaticos en la carpeta public
-app.use(express.static(ficherosEstaticos));   
-app.use(express.urlencoded({extended: true}));
-app.use(morgan('dev')); //Para poder ver las funciones de app.js que se estan haciendo
-app.use(express.json());//Para poder usar ajax y que se pasen los datos en formato json
-
-// Crear un pool de conexiones a la base de datos de MySQL 
-const pool = mysql.createPool(config.mysqlConfig);  
-
-// Crear una instancia de los DAOs 
-const daoT = new DAOTareas(pool);  //Crear variable con el pool de tipo DaoUsuario
-
-
-// Arrancar el servidor 
-app.listen(config.port, function(err) {
-    if (err) {console.log("ERROR al iniciar el servidor"); //Error al iniciar el servidor
-    } else { console.log(`Servidor arrancado en el puerto localhost:${config.port}`);} //Exito al iniciar el servidor
 });
 
-// Ruta para manejar cualquier solicitud GET
-app.get('/', (req, res) => {
-    // Manejar cualquier solicitud GET no coincidente con los archivos estáticos
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-  
-app.post('/guardar-tarea', (req, res) => {
-    const { tema, fecha } = req.body;
-    daoT.crearTarea(tema, fecha, cb_tarea);
-    function cb_tarea(err,result){
-      if (err) {
-        console.log(err.message);
-        res.status(500).json({ error: err.message }); // Enviar respuesta de error al cliente
-      } else {
-        console.log('Tarea creada correctamente en el servidor');
-        res.status(200).json({ message: 'Tarea creada correctamente' }); // Enviar respuesta exitosa al cliente
-      }
-    }
-}); 
-  
+// --- Web-Push ---
+const webpush = require('web-push'); // Importar web-push
+// Configuración de web-push (debes configurar tus propias claves)
+// Configura tus propias claves VAPID
+// const vapidKeys = webpush.generateVAPIDKeys();
+// console.log("Clave pública VAPID:", vapidKeys.publicKey);
+// console.log("Clave privada VAPID:", vapidKeys.privateKey);
+const publicVapidKey = 'BLCnzXg8xUoWfMEHgv6LvbweKvD8gPFnhDFa_itdDK-k7UvZhthfW9KyIRopraMi5mhaXqEMXitX22g-4kJNs7g';
+const privateVapidKey = 'RQL25CNQAqpZHFJuCVKmP2kpDpeuRKZhNbK-N1Ijouc';
+webpush.setVapidDetails('mailto:your_email@example.com', publicVapidKey, privateVapidKey);
+
+
+
+// Crear pool de conexiones
+const pool = mysql.createPool(connection.mysqlConfig);
+
+// --- DAOs y Controllers ---
+// Crear instancias de los DAOs
+const daoTar = new DAOTareas(pool);
+const daoSus = new DAOSuscripción(pool);
+// Crear instancias de los Controllers
+const conPro = new ControllerPrototipo(daoTar, daoSus);
+
+// --- Routers ---
+routerPrototipo.routerConfig(conPro);
+
+app.use("/prototipo", routerPrototipo.RouterPrototipo);
+
+// --- Peticiones GET ---
+// - Enrutamientos -
+app.get(['/', '/vistaView'], (req, res) => {
+  res.render('vistaView');
+});
+
+app.get('/listarTareasView', (req, res) => {
+  res.render('listarTareasView');
+});
+
+// - Otras peticiones GET -
 app.get('/obtener-tareas', (req, res) => {
-    daoT.getAllTareas(cb_getTar);// recopilar todos los usuarios
-    function cb_getTar(err, result){
-      if(err){
-          console.log(err.message); // Mensaje de error en la consola
-          res.status(500).json({ error: err.message });// Error y mandar a el ajax
-          res.end();
-      }
-      else{res.status(200).json({ resultado: result });}// Mandar la lista de usuarios
-    } 
+  daoTar.getAllTareas(cb_getTar);// recopilar todos los usuarios
+  function cb_getTar(err, result) {
+    if (err) {
+      console.log(err.message); // Mensaje de error en la consola
+      res.status(500).json({ error: err.message });// Error y mandar a el ajax
+      res.end();
+    }
+    else { res.status(200).json({ resultado: result }); }// Mandar la lista de usuarios
+  }
 });
 
-////////////////////////////////////////////////////////////////
+// --- POSTS ---
+app.post('/guardar-tarea', (req, res) => {
+  const { tema, fecha } = req.body;
+  daoTar.crearTarea(tema, fecha, cb_tarea);
+  function cb_tarea(err, result) {
+    if (err) {
+      console.log(err.message);
+      res.status(500).json({ error: err.message }); // Enviar respuesta de error al cliente
+    } else {
+      console.log('Tarea creada correctamente en el servidor');
+      res.status(200).json({ message: 'Tarea creada correctamente' }); // Enviar respuesta exitosa al cliente
+    }
+  }
+});
 
 // Ruta para recibir y guardar la suscripción desde el cliente
 app.post('/guardar-suscripcion', (req, res) => {
   const subscription = req.body.subscription;
   console.log('Ha peido enviar notificaciones')
-  daoT.guardarSuscripcion(subscription, (err) => {
-      if (err) {
-          console.error('Error al guardar la suscripción:', err);
-          res.status(500).json({ error: 'Error interno del servidor' });
-          return;
-      }
-      res.status(200).json({ message: 'Suscripción guardada correctamente' });
+  daoSus.guardarSuscripcion(subscription, (err) => {
+    if (err) {
+      console.error('Error al guardar la suscripción:', err);
+      res.status(500).json({ error: 'Error interno del servidor' });
+      return;
+    }
+    res.status(200).json({ message: 'Suscripción guardada correctamente' });
   });
 });
 
 // Ruta para enviar notificaciones push
 app.post('/enviar-notificacion', (req, res) => {
   const notificationPayload = {
-      notification: {
-          title: '¡Nuevo mensaje!',
-          body: '¡Tienes un nuevo mensaje!',
-          icon: 'path_to_icon.png' // Ruta al icono de la notificación
-      }
+    notification: {
+      title: '¡Nuevo mensaje!',
+      body: '¡Tienes un nuevo mensaje!',
+      icon: 'path_to_icon.png' // Ruta al icono de la notificación
+    }
   };
 
-  daoT.getAllSubscriptions((err, subscriptions) => {
-      if (err) {
-          console.error('Error al obtener suscripciones:', err);
-          res.status(500).json({ error: 'Error interno del servidor' });
-          return;
-      }
+  daoSus.getAllSubscriptions((err, subscriptions) => {
+    if (err) {
+      console.error('Error al obtener suscripciones:', err);
+      res.status(500).json({ error: 'Error interno del servidor' });
+      return;
+    }
 
-      Promise.all(subscriptions.map(sub => webpush.sendNotification(sub, JSON.stringify(notificationPayload))))
-          .then(() => {
-              console.log('Notificaciones enviadas con éxito');
-              res.status(200).json({ message: 'Notificaciones enviadas con éxito' });
-          })
-          .catch(err => {
-              console.error('Error al enviar notificaciones:', err);
-              res.status(500).json({ error: 'Error interno del servidor' });
-          });
+    Promise.all(subscriptions.map(sub => webpush.sendNotification(sub, JSON.stringify(notificationPayload))))
+      .then(() => {
+        console.log('Notificaciones enviadas con éxito');
+        res.status(200).json({ message: 'Notificaciones enviadas con éxito' });
+      })
+      .catch(err => {
+        console.error('Error al enviar notificaciones:', err);
+        res.status(500).json({ error: 'Error interno del servidor' });
+      });
   });
 });
 
 
+// --- Otras funciones ---
+
 // Función para enviar notificaciones cada 5 segundos
 function enviarNotificacionAutomatica() {
   const notificationPayload = {
-      notification: {
-          title: '¡Nuevo mensaje!',
-          body: '¡Tienes un nuevo mensaje!',
-          icon: '/images/icon-192x192.png' // Ruta al icono de la notificación
-      }
+    notification: {
+      title: '¡Nuevo mensaje!',
+      body: '¡Tienes un nuevo mensaje!',
+      icon: '/images/icon-192x192.png' // Ruta al icono de la notificación
+    }
   };
 
-  daoT.getAllSubscriptions((err, subscriptions) => {
-      if (err) {
-          console.error('Error al obtener suscripciones:', err);
-          return;
-      }
+  daoSus.getAllSubscriptions((err, subscriptions) => {
+    if (err) {
+      console.error('Error al obtener suscripciones:', err);
+      return;
+    }
 
-      subscriptions.forEach(subscription => {
-          webpush.sendNotification(subscription, JSON.stringify(notificationPayload))
-              .then(() => console.log('Notificación enviada con éxito a', subscription.endpoint))
-              .catch(err => console.error('Error al enviar notificación a', subscription.endpoint, ':', err));
-      });
+    subscriptions.forEach(subscription => {
+      webpush.sendNotification(subscription, JSON.stringify(notificationPayload))
+        .then(() => console.log('Notificación enviada con éxito a', subscription.endpoint))
+        .catch(err => console.error('Error al enviar notificación a', subscription.endpoint, ':', err));
+    });
   });
 }
 
-// Programar la tarea para enviar notificaciones cada 5 segundos
+// Programar la tarea para enviar notificaciones cada 9 segundos
 cron.schedule('*/9 * * * * *', () => {
   console.log('Enviando notificaciones...');
   enviarNotificacionAutomatica();
 });
 
-// Enviar notificaciones cada 5 segundos
-//setInterval(enviarNotificacionAutomatica, 5000);
+// --- Arrancar el servidor ---
+app.listen(connection.port, function (err) {
+  if (err) {
+    console.log("ERROR al iniciar el servidor"); //Error al iniciar el servidor
+  } else { console.log(`Servidor arrancado en el puerto localhost:${connection.port}`); } //Exito al iniciar el servidor
+});

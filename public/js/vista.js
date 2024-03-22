@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(`Tema: ${formData.get('tema')}`);
     console.log(`Fecha: ${formData.get('fecha')}`);
     try {
-      const response = await fetch('/guardar-tarea', {
+      const response = await fetch('/prototipo/guardar-tarea', {
         method: 'POST',
         body: JSON.stringify({
           tema: formData.get('tema'),

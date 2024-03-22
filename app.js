@@ -94,33 +94,7 @@ app.get('/listarTareasView', (req, res) => {
   res.render('listarTareasView');
 });
 
-// - Otras peticiones GET -
-app.get('/obtener-tareas', (req, res) => {
-  daoTar.getAllTareas(cb_getTar);// recopilar todos los usuarios
-  function cb_getTar(err, result) {
-    if (err) {
-      console.log(err.message); // Mensaje de error en la consola
-      res.status(500).json({ error: err.message });// Error y mandar a el ajax
-      res.end();
-    }
-    else { res.status(200).json({ resultado: result }); }// Mandar la lista de usuarios
-  }
-});
-
 // --- POSTS ---
-app.post('/guardar-tarea', (req, res) => {
-  const { tema, fecha } = req.body;
-  daoTar.crearTarea(tema, fecha, cb_tarea);
-  function cb_tarea(err, result) {
-    if (err) {
-      console.log(err.message);
-      res.status(500).json({ error: err.message }); // Enviar respuesta de error al cliente
-    } else {
-      console.log('Tarea creada correctamente en el servidor');
-      res.status(200).json({ message: 'Tarea creada correctamente' }); // Enviar respuesta exitosa al cliente
-    }
-  }
-});
 
 // Ruta para recibir y guardar la suscripción desde el cliente
 app.post('/guardar-suscripcion', (req, res) => {

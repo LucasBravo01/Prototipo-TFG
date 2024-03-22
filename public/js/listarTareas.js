@@ -3,7 +3,7 @@ console.log("Gestor tareas!!");
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-      const response = await fetch('/obtener-tareas');
+      const response = await fetch('/prototipo/obtener-tareas');
       if (response.ok) {
         const data = await response.json();
         const asignaturas = data.resultado;
